@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Black and White Image Outline Detection</title>
+</head>
+
+<body>
+
+    <input type="file" id="uploadImage" accept="image/*">
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const uploadImage = document.getElementById('uploadImage');
+
+        uploadImage.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const img = new Image();
+            const url = URL.createObjectURL(file);
+
+            img.src = url;
+            img.onload = () => {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const pixels = imageData.data;
+                const newImageData = ctx.createImageData(canvas.width, canvas.height);
+                const newPixels = newImageData.data;
+
+                // Iterate through the pixels
+                for (let y = 0; y < canvas.height; y++) {
+                    for (let x = 0; x < canvas.width; x++) {
+                        const index = (y * canvas.width + x) * 4;
+
+                        // Calculate horizontal difference (right pixel)
+                        let diffX = 0;
+                        if (x < canvas.width - 1) {
+                            const rightIndex = (y * canvas.width + (x + 1)) * 4;
+                            const rightR = pixels[rightIndex];
+                            const rightG = pixels[rightIndex + 1];
+                            const rightB = pixels[rightIndex + 2];
+                            const rightGray = (rightR + rightG + rightB) / 3;
+
+                            const currentR = pixels[index];
+                            const currentG = pixels[index + 1];
+                            const currentB = pixels[index + 2];
+                            const currentGray = (currentR + currentG + currentB) / 3;
+
+                            diffX = Math.abs(currentGray - rightGray);
+                        }
+
+                        // Calculate vertical difference (bottom pixel)
+                        let diffY = 0;
+                        if (y < canvas.height - 1) {
+                            const bottomIndex = ((y + 1) * canvas.width + x) * 4;
+                            const bottomR = pixels[bottomIndex];
+                            const bottomG = pixels[bottomIndex + 1];
+                            const bottomB = pixels[bottomIndex + 2];
+                            const bottomGray = (bottomR + bottomG + bottomB) / 3;
+
+                            const currentR = pixels[index];
+                            const currentG = pixels[index + 1];
+                            const currentB = pixels[index + 2];
+                            const currentGray = (currentR + currentG + currentB) / 3;
+
+                            diffY = Math.abs(currentGray - bottomGray);
+                        }
+
+                        // Combine the horizontal and vertical differences
+                        const edgeValue = Math.max(diffX, diffY);
+
+                        // Apply the grayscale value for the output
+                        newPixels[index] = 255 - edgeValue;
+                        newPixels[index + 1] = 255 - edgeValue;
+                        newPixels[index + 2] = 255 - edgeValue;
+                        newPixels[index + 3] = 255; // Fully opaque
+                    }
+                }
+
+                // Display the result on the canvas
+                ctx.putImageData(newImageData, 0, 0);
+            };
+        });
+    </script>
+
+</body>
+
+</html>
